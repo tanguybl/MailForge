@@ -119,34 +119,51 @@ div[data-testid="stVerticalBlock"] > div > div > .stButton>button:hover {
 }
 .stButton>button:disabled { opacity:0.35 !important; transform:none !important; }
 
-/* Chip-row : force les boutons variables à leur taille naturelle */
-.chip-row { display: flex; gap: 8px; margin-bottom: 8px; }
-.chip-row ~ div [data-testid="stHorizontalBlock"] { display: none; }
-div.chip-row + div [data-testid="column"] > div > div > div > button,
-div.chip-row [data-testid="column"] button {
+/* Force chip buttons small and inline */
+.chip-row [data-testid="stHorizontalBlock"] {
+  display: flex !important;
+  flex-direction: row !important;
+  gap: 8px !important;
+  flex-wrap: nowrap !important;
+  align-items: center !important;
+}
+.chip-row [data-testid="column"] {
+  width: auto !important;
+  flex: 0 0 auto !important;
+  min-width: 0 !important;
+  padding: 0 !important;
+}
+.chip-row [data-testid="column"] > div,
+.chip-row [data-testid="column"] > div > div,
+.chip-row [data-testid="column"] > div > div > div {
+  width: auto !important;
+  min-width: 0 !important;
+}
+.chip-row button {
   background: rgba(196,113,237,0.15) !important;
   color: #c471ed !important;
   border: 1px solid rgba(196,113,237,0.4) !important;
   font-family: 'DM Mono', monospace !important;
-  font-size: 0.73rem !important;
+  font-size: 0.72rem !important;
   font-weight: 400 !important;
-  padding: 3px 12px !important;
-  min-height: 26px !important;
-  height: 26px !important;
-  width: fit-content !important;
+  padding: 2px 10px !important;
+  height: 24px !important;
+  min-height: 0 !important;
+  width: auto !important;
   min-width: 0 !important;
+  max-width: fit-content !important;
   box-shadow: none !important;
   border-radius: 20px !important;
   line-height: 1 !important;
   white-space: nowrap !important;
+  display: inline-flex !important;
+  align-items: center !important;
 }
-div.chip-row [data-testid="column"] button:hover {
+.chip-row button:hover {
   background: rgba(196,113,237,0.3) !important;
   transform: none !important;
   box-shadow: none !important;
 }
-div.chip-row [data-testid="column"] { flex: 0 0 auto !important; width: auto !important; min-width: 0 !important; }
-div.chip-row [data-testid="stHorizontalBlock"] { gap: 8px !important; }
 .stFileUploader { background:#0e0e18 !important; border:2px dashed #1e1e2e !important; border-radius:12px !important; }
 .stProgress>div>div { background:linear-gradient(90deg,#c471ed,#4776e6) !important; }
 [data-testid="stDataFrame"] { border-radius:10px; overflow:hidden; }

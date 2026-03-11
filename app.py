@@ -143,7 +143,7 @@ div[data-testid="stVerticalBlock"] > div > div > .stButton>button:hover {
   font-family: 'DM Mono', monospace !important;
   font-size: 0.72rem !important;
   font-weight: 400 !important;
-  padding: 2px 12px !important;
+  padding: 2px 24px !important;
   height: 26px !important;
   min-height: 0 !important;
   width: auto !important;

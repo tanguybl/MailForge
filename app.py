@@ -118,6 +118,29 @@ div[data-testid="stVerticalBlock"] > div > div > .stButton>button:hover {
   transform:translateY(-1px); box-shadow:0 8px 24px rgba(196,113,237,0.35) !important;
 }
 .stButton>button:disabled { opacity:0.35 !important; transform:none !important; }
+
+/* Small chip buttons for variables */
+.chip-btn .stButton>button {
+  background: rgba(196,113,237,0.12) !important;
+  color: #c471ed !important;
+  border: 1px solid rgba(196,113,237,0.35) !important;
+  border-radius: 6px !important;
+  font-family: 'DM Mono', monospace !important;
+  font-weight: 400 !important;
+  font-size: 0.72rem !important;
+  padding: 2px 10px !important;
+  box-shadow: none !important;
+  line-height: 1.4 !important;
+  min-height: 0 !important;
+  height: auto !important;
+  width: auto !important;
+}
+.chip-btn .stButton>button:hover {
+  background: rgba(196,113,237,0.25) !important;
+  border-color: #c471ed !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
 .stFileUploader { background:#0e0e18 !important; border:2px dashed #1e1e2e !important; border-radius:12px !important; }
 .stProgress>div>div { background:linear-gradient(90deg,#c471ed,#4776e6) !important; }
 [data-testid="stDataFrame"] { border-radius:10px; overflow:hidden; }
@@ -228,20 +251,23 @@ if email_pattern and st.session_state.contacts and st.session_state.prenom_col:
     st.markdown(f'<div class="example-line">→ <span>{ex}</span></div>', unsafe_allow_html=True)
 
 st.markdown('</div>', unsafe_allow_html=True)
-
-
-# ════════════════════════════════════════════════
-# 03 — Contenu
 # ════════════════════════════════════════════════
 st.markdown('<div class="card"><div class="card-label">Étape 03</div><div class="card-title">✍️ Contenu du mail</div>', unsafe_allow_html=True)
 
 st.markdown('<p style="font-family:DM Mono,monospace;font-size:0.7rem;color:#6b6b88;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:4px">Objet</p>', unsafe_allow_html=True)
 mail_subject = st.text_input("Objet", key="ms", placeholder="ex: Candidature — Développeur Full Stack", label_visibility="collapsed")
 
-st.markdown('<p style="font-family:DM Mono,monospace;font-size:0.7rem;color:#6b6b88;letter-spacing:0.08em;text-transform:uppercase;margin:12px 0 4px">Corps</p>', unsafe_allow_html=True)
-c1, c2, c3 = st.columns([0.8, 0.7, 6])
-with c1: st.button("{prenom}", key="mb_p", on_click=lambda: st.session_state.update(mb=st.session_state.mb+"{prenom}"))
-with c2: st.button("{nom}",    key="mb_n", on_click=lambda: st.session_state.update(mb=st.session_state.mb+"{nom}"))
+st.markdown('<p style="font-family:DM Mono,monospace;font-size:0.7rem;color:#6b6b88;letter-spacing:0.08em;text-transform:uppercase;margin:12px 0 6px">Corps</p>', unsafe_allow_html=True)
+
+col_p, col_n, col_rest = st.columns([1, 1, 10])
+with col_p:
+    st.markdown('<div class="chip-btn">', unsafe_allow_html=True)
+    st.button("{prenom}", key="mb_p", on_click=lambda: st.session_state.update(mb=st.session_state.mb+"{prenom}"))
+    st.markdown('</div>', unsafe_allow_html=True)
+with col_n:
+    st.markdown('<div class="chip-btn">', unsafe_allow_html=True)
+    st.button("{nom}", key="mb_n", on_click=lambda: st.session_state.update(mb=st.session_state.mb+"{nom}"))
+    st.markdown('</div>', unsafe_allow_html=True)
 mail_body = st.text_area("Corps", key="mb", placeholder="Bonjour {prenom} {nom},\n\nJe me permets de vous contacter...\n\nCordialement,", height=200, label_visibility="collapsed")
 
 st.markdown('</div>', unsafe_allow_html=True)

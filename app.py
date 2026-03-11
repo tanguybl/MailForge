@@ -132,10 +132,16 @@ div[data-testid="stVerticalBlock"] > div > div > .stButton>button:hover {
 .var-chips [data-testid="column"] {
   flex: 0 0 auto !important;
   width: auto !important;
-  min-width: 0 !important;
+  min-width: max-content !important;
   padding: 0 !important;
 }
-.var-chips [data-testid="column"] > div { width: auto !important; }
+.var-chips [data-testid="column"] > div,
+.var-chips [data-testid="column"] > div > div,
+.var-chips [data-testid="column"] > div > div > div { 
+  width: auto !important; 
+  min-width: max-content !important;
+  white-space: nowrap !important; 
+}
 .var-chips [data-testid="column"] button {
   background: rgba(196,113,237,0.15) !important;
   color: #c471ed !important;

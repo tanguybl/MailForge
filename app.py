@@ -119,45 +119,42 @@ div[data-testid="stVerticalBlock"] > div > div > .stButton>button:hover {
 }
 .stButton>button:disabled { opacity:0.35 !important; transform:none !important; }
 
-/* Chip buttons — side by side, violet */
-div[data-testid="stVerticalBlock"] > div > div[data-testid="stButton"] {
-  display: inline-block !important;
+/* var-chips : force row layout + pill style */
+.var-chips + div [data-testid="stHorizontalBlock"],
+.var-chips [data-testid="stHorizontalBlock"] {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 8px !important;
+  flex-wrap: nowrap !important;
   width: auto !important;
-  margin-right: 8px !important;
 }
-div[data-testid="stButton"]:has(button#ep_p),
-div[data-testid="stButton"]:has(button#ep_n),
-div[data-testid="stButton"]:has(button#mb_p),
-div[data-testid="stButton"]:has(button#mb_n) {
-  display: inline-block !important;
+.var-chips [data-testid="column"] {
+  flex: 0 0 auto !important;
   width: auto !important;
-  margin-right: 8px !important;
+  min-width: 0 !important;
+  padding: 0 !important;
 }
-button[kind="secondary"],
-div[data-testid="stButton"]:has(button#ep_p) button,
-div[data-testid="stButton"]:has(button#ep_n) button,
-div[data-testid="stButton"]:has(button#mb_p) button,
-div[data-testid="stButton"]:has(button#mb_n) button {
+.var-chips [data-testid="column"] > div { width: auto !important; }
+.var-chips [data-testid="column"] button {
   background: rgba(196,113,237,0.15) !important;
   color: #c471ed !important;
   border: 1px solid rgba(196,113,237,0.4) !important;
   font-family: 'DM Mono', monospace !important;
   font-size: 0.72rem !important;
   font-weight: 400 !important;
-  padding: 3px 12px !important;
+  padding: 2px 12px !important;
   height: 26px !important;
   min-height: 0 !important;
+  width: auto !important;
+  min-width: 0 !important;
   border-radius: 20px !important;
   box-shadow: none !important;
   white-space: nowrap !important;
-  width: auto !important;
-  min-width: 0 !important;
+  line-height: 1 !important;
 }
-div[data-testid="stButton"]:has(button#ep_p) button:hover,
-div[data-testid="stButton"]:has(button#ep_n) button:hover,
-div[data-testid="stButton"]:has(button#mb_p) button:hover,
-div[data-testid="stButton"]:has(button#mb_n) button:hover {
-  background: rgba(196,113,237,0.3) !important;
+.var-chips [data-testid="column"] button:hover {
+  background: rgba(196,113,237,0.28) !important;
   transform: none !important;
   box-shadow: none !important;
 }
@@ -270,9 +267,10 @@ if st.session_state.ep_inject:
     st.session_state.ep += st.session_state.ep_inject
     st.session_state.ep_inject = ""
 
-st.markdown('<div style="display:flex;gap:8px;margin-bottom:8px">', unsafe_allow_html=True)
-st.button("{prenom}", key="ep_p", on_click=lambda: st.session_state.update(ep_inject="{prenom}"), use_container_width=False)
-st.button("{nom}", key="ep_n", on_click=lambda: st.session_state.update(ep_inject="{nom}"), use_container_width=False)
+st.markdown('<div class="var-chips">', unsafe_allow_html=True)
+c1, c2, _ = st.columns([1,1,8])
+with c1: st.button("{prenom}", key="ep_p", on_click=lambda: st.session_state.update(ep_inject="{prenom}"))
+with c2: st.button("{nom}",    key="ep_n", on_click=lambda: st.session_state.update(ep_inject="{nom}"))
 st.markdown('</div>', unsafe_allow_html=True)
 
 email_pattern = st.text_input("Format", key="ep", placeholder="{prenom}.{nom}@natixis.com", label_visibility="collapsed")
@@ -299,9 +297,10 @@ if st.session_state.mb_inject:
     st.session_state.mb += st.session_state.mb_inject
     st.session_state.mb_inject = ""
 
-st.markdown('<div style="display:flex;gap:8px;margin-bottom:8px">', unsafe_allow_html=True)
-st.button("{prenom}", key="mb_p", on_click=lambda: st.session_state.update(mb_inject="{prenom}"), use_container_width=False)
-st.button("{nom}", key="mb_n", on_click=lambda: st.session_state.update(mb_inject="{nom}"), use_container_width=False)
+st.markdown('<div class="var-chips">', unsafe_allow_html=True)
+c1, c2, _ = st.columns([1,1,8])
+with c1: st.button("{prenom}", key="mb_p", on_click=lambda: st.session_state.update(mb_inject="{prenom}"))
+with c2: st.button("{nom}",    key="mb_n", on_click=lambda: st.session_state.update(mb_inject="{nom}"))
 st.markdown('</div>', unsafe_allow_html=True)
 
 mail_body = st.text_area("Corps", key="mb", placeholder="Bonjour {prenom} {nom},\n\nJe me permets de vous contacter...\n\nCordialement,", height=200, label_visibility="collapsed")

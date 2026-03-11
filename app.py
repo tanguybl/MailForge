@@ -8,7 +8,7 @@ from email.mime.text import MIMEText
 from email.mime.base import MIMEBase
 from email import encoders
 
-st.set_page_config(page_title="MailForge", page_icon="📮", layout="centered", initial_sidebar_state="collapsed")
+st.set_page_config(page_title="MailForge", page_icon="✉️", layout="centered", initial_sidebar_state="collapsed")
 
 st.markdown("""
 <style>

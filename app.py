@@ -119,10 +119,34 @@ div[data-testid="stVerticalBlock"] > div > div > .stButton>button:hover {
 }
 .stButton>button:disabled { opacity:0.35 !important; transform:none !important; }
 
-/* Variable chip buttons - targeted by aria-label */
-button[kind="secondary"][data-testid="baseButton-secondary"] { }
-.stButton button p { font-size: inherit !important; }
-
+/* Chip-row : force les boutons variables à leur taille naturelle */
+.chip-row { display: flex; gap: 8px; margin-bottom: 8px; }
+.chip-row ~ div [data-testid="stHorizontalBlock"] { display: none; }
+div.chip-row + div [data-testid="column"] > div > div > div > button,
+div.chip-row [data-testid="column"] button {
+  background: rgba(196,113,237,0.15) !important;
+  color: #c471ed !important;
+  border: 1px solid rgba(196,113,237,0.4) !important;
+  font-family: 'DM Mono', monospace !important;
+  font-size: 0.73rem !important;
+  font-weight: 400 !important;
+  padding: 3px 12px !important;
+  min-height: 26px !important;
+  height: 26px !important;
+  width: fit-content !important;
+  min-width: 0 !important;
+  box-shadow: none !important;
+  border-radius: 20px !important;
+  line-height: 1 !important;
+  white-space: nowrap !important;
+}
+div.chip-row [data-testid="column"] button:hover {
+  background: rgba(196,113,237,0.3) !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+div.chip-row [data-testid="column"] { flex: 0 0 auto !important; width: auto !important; min-width: 0 !important; }
+div.chip-row [data-testid="stHorizontalBlock"] { gap: 8px !important; }
 .stFileUploader { background:#0e0e18 !important; border:2px dashed #1e1e2e !important; border-radius:12px !important; }
 .stProgress>div>div { background:linear-gradient(90deg,#c471ed,#4776e6) !important; }
 [data-testid="stDataFrame"] { border-radius:10px; overflow:hidden; }
@@ -226,6 +250,18 @@ st.markdown('</div>', unsafe_allow_html=True)
 # ════════════════════════════════════════════════
 st.markdown('<div class="card"><div class="card-label">Étape 02</div><div class="card-title">📧 Format de l\'adresse email</div>', unsafe_allow_html=True)
 
+if "ep" not in st.session_state: st.session_state.ep = ""
+if "ep_inject" not in st.session_state: st.session_state.ep_inject = ""
+if st.session_state.ep_inject:
+    st.session_state.ep += st.session_state.ep_inject
+    st.session_state.ep_inject = ""
+
+st.markdown('<div class="chip-row">', unsafe_allow_html=True)
+c1, c2, _ = st.columns([1, 1, 10])
+with c1: st.button("{prenom}", key="ep_p", on_click=lambda: st.session_state.update(ep_inject="{prenom}"))
+with c2: st.button("{nom}",    key="ep_n", on_click=lambda: st.session_state.update(ep_inject="{nom}"))
+st.markdown('</div>', unsafe_allow_html=True)
+
 email_pattern = st.text_input("Format", key="ep", placeholder="{prenom}.{nom}@natixis.com", label_visibility="collapsed")
 
 if email_pattern and st.session_state.contacts and st.session_state.prenom_col:
@@ -233,6 +269,9 @@ if email_pattern and st.session_state.contacts and st.session_state.prenom_col:
     st.markdown(f'<div class="example-line">→ <span>{ex}</span></div>', unsafe_allow_html=True)
 
 st.markdown('</div>', unsafe_allow_html=True)
+
+# ════════════════════════════════════════════════
+# 03 — Contenu
 # ════════════════════════════════════════════════
 st.markdown('<div class="card"><div class="card-label">Étape 03</div><div class="card-title">✍️ Contenu du mail</div>', unsafe_allow_html=True)
 
@@ -243,14 +282,15 @@ st.markdown('<p style="font-family:DM Mono,monospace;font-size:0.7rem;color:#6b6
 
 if "mb" not in st.session_state: st.session_state.mb = ""
 if "mb_inject" not in st.session_state: st.session_state.mb_inject = ""
-
 if st.session_state.mb_inject:
-    st.session_state.mb = st.session_state.mb + st.session_state.mb_inject
+    st.session_state.mb += st.session_state.mb_inject
     st.session_state.mb_inject = ""
 
+st.markdown('<div class="chip-row">', unsafe_allow_html=True)
 c1, c2, _ = st.columns([1, 1, 10])
 with c1: st.button("{prenom}", key="mb_p", on_click=lambda: st.session_state.update(mb_inject="{prenom}"))
 with c2: st.button("{nom}",    key="mb_n", on_click=lambda: st.session_state.update(mb_inject="{nom}"))
+st.markdown('</div>', unsafe_allow_html=True)
 
 mail_body = st.text_area("Corps", key="mb", placeholder="Bonjour {prenom} {nom},\n\nJe me permets de vous contacter...\n\nCordialement,", height=200, label_visibility="collapsed")
 

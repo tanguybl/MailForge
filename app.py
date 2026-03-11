@@ -216,18 +216,10 @@ if csv_file:
 st.markdown('</div>', unsafe_allow_html=True)
 
 
-# ── session state pour les champs texte ──
-for k, v in {"ep": "", "ms": "", "mb": ""}.items():
-    if k not in st.session_state: st.session_state[k] = v
-
 # ════════════════════════════════════════════════
 # 02 — Pattern email
 # ════════════════════════════════════════════════
 st.markdown('<div class="card"><div class="card-label">Étape 02</div><div class="card-title">📧 Format de l\'adresse email</div>', unsafe_allow_html=True)
-
-c1, c2, c3 = st.columns([1.2, 1, 5])
-with c1: st.button("{prenom} +", key="ep_p", on_click=lambda: st.session_state.update(ep=st.session_state.ep+"{prenom}"))
-with c2: st.button("{nom} +",    key="ep_n", on_click=lambda: st.session_state.update(ep=st.session_state.ep+"{nom}"))
 
 email_pattern = st.text_input("Format", key="ep", placeholder="{prenom}.{nom}@natixis.com", label_visibility="collapsed")
 
@@ -244,15 +236,12 @@ st.markdown('</div>', unsafe_allow_html=True)
 st.markdown('<div class="card"><div class="card-label">Étape 03</div><div class="card-title">✍️ Contenu du mail</div>', unsafe_allow_html=True)
 
 st.markdown('<p style="font-family:DM Mono,monospace;font-size:0.7rem;color:#6b6b88;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:4px">Objet</p>', unsafe_allow_html=True)
-c1, c2, c3 = st.columns([1.2, 1, 5])
-with c1: st.button("{prenom} +", key="ms_p", on_click=lambda: st.session_state.update(ms=st.session_state.ms+"{prenom}"))
-with c2: st.button("{nom} +",    key="ms_n", on_click=lambda: st.session_state.update(ms=st.session_state.ms+"{nom}"))
 mail_subject = st.text_input("Objet", key="ms", placeholder="ex: Candidature — Développeur Full Stack", label_visibility="collapsed")
 
 st.markdown('<p style="font-family:DM Mono,monospace;font-size:0.7rem;color:#6b6b88;letter-spacing:0.08em;text-transform:uppercase;margin:12px 0 4px">Corps</p>', unsafe_allow_html=True)
-c1, c2, c3 = st.columns([1.2, 1, 5])
-with c1: st.button("{prenom} +", key="mb_p", on_click=lambda: st.session_state.update(mb=st.session_state.mb+"{prenom}"))
-with c2: st.button("{nom} +",    key="mb_n", on_click=lambda: st.session_state.update(mb=st.session_state.mb+"{nom}"))
+c1, c2, c3 = st.columns([0.8, 0.7, 6])
+with c1: st.button("{prenom}", key="mb_p", on_click=lambda: st.session_state.update(mb=st.session_state.mb+"{prenom}"))
+with c2: st.button("{nom}",    key="mb_n", on_click=lambda: st.session_state.update(mb=st.session_state.mb+"{nom}"))
 mail_body = st.text_area("Corps", key="mb", placeholder="Bonjour {prenom} {nom},\n\nJe me permets de vous contacter...\n\nCordialement,", height=200, label_visibility="collapsed")
 
 st.markdown('</div>', unsafe_allow_html=True)

@@ -257,13 +257,7 @@ st.markdown('<div class="card"><div class="card-label">Étape 03</div><div class
 st.markdown('<p style="font-family:DM Mono,monospace;font-size:0.7rem;color:#6b6b88;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:4px">Objet</p>', unsafe_allow_html=True)
 mail_subject = st.text_input("Objet", key="ms", placeholder="ex: Candidature — Développeur Full Stack", label_visibility="collapsed")
 
-st.markdown('<p style="font-family:DM Mono,monospace;font-size:0.7rem;color:#6b6b88;letter-spacing:0.08em;text-transform:uppercase;margin:12px 0 6px">Corps</p>', unsafe_allow_html=True)
-
-var_click = st.pills("", ["{prenom}", "{nom}"], key="var_pill", label_visibility="collapsed")
-if var_click:
-    st.session_state.mb = st.session_state.mb + var_click
-    st.session_state.var_pill = None
-
+st.markdown('<p style="font-family:DM Mono,monospace;font-size:0.7rem;color:#6b6b88;letter-spacing:0.08em;text-transform:uppercase;margin:12px 0 6px">Corps — variables : <code style="background:rgba(196,113,237,0.15);color:#c471ed;padding:2px 7px;border-radius:4px">{prenom}</code> &nbsp; <code style="background:rgba(196,113,237,0.15);color:#c471ed;padding:2px 7px;border-radius:4px">{nom}</code></p>', unsafe_allow_html=True)
 mail_body = st.text_area("Corps", key="mb", placeholder="Bonjour {prenom} {nom},\n\nJe me permets de vous contacter...\n\nCordialement,", height=200, label_visibility="collapsed")
 
 st.markdown('</div>', unsafe_allow_html=True)

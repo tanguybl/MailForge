@@ -119,50 +119,21 @@ div[data-testid="stVerticalBlock"] > div > div > .stButton>button:hover {
 }
 .stButton>button:disabled { opacity:0.35 !important; transform:none !important; }
 
-/* Force chip buttons small and inline */
-.chip-row [data-testid="stHorizontalBlock"] {
-  display: flex !important;
-  flex-direction: row !important;
-  gap: 8px !important;
-  flex-wrap: nowrap !important;
-  align-items: center !important;
-}
-.chip-row [data-testid="column"] {
-  width: auto !important;
-  flex: 0 0 auto !important;
-  min-width: 0 !important;
-  padding: 0 !important;
-}
-.chip-row [data-testid="column"] > div,
-.chip-row [data-testid="column"] > div > div,
-.chip-row [data-testid="column"] > div > div > div {
-  width: auto !important;
-  min-width: 0 !important;
-}
-.chip-row button {
+/* Chip variable buttons - small, styled as pills */
+div[data-testid="stButton"]:has(button[kind="secondaryFormSubmit"]) button,
+button[data-testid="baseButton-secondary"] {
   background: rgba(196,113,237,0.15) !important;
   color: #c471ed !important;
   border: 1px solid rgba(196,113,237,0.4) !important;
   font-family: 'DM Mono', monospace !important;
   font-size: 0.72rem !important;
   font-weight: 400 !important;
-  padding: 2px 10px !important;
-  height: 24px !important;
+  padding: 3px 12px !important;
+  height: 26px !important;
   min-height: 0 !important;
-  width: auto !important;
-  min-width: 0 !important;
-  max-width: fit-content !important;
-  box-shadow: none !important;
   border-radius: 20px !important;
-  line-height: 1 !important;
-  white-space: nowrap !important;
-  display: inline-flex !important;
-  align-items: center !important;
-}
-.chip-row button:hover {
-  background: rgba(196,113,237,0.3) !important;
-  transform: none !important;
   box-shadow: none !important;
+  white-space: nowrap !important;
 }
 .stFileUploader { background:#0e0e18 !important; border:2px dashed #1e1e2e !important; border-radius:12px !important; }
 .stProgress>div>div { background:linear-gradient(90deg,#c471ed,#4776e6) !important; }
@@ -273,10 +244,9 @@ if st.session_state.ep_inject:
     st.session_state.ep += st.session_state.ep_inject
     st.session_state.ep_inject = ""
 
-st.markdown('<div class="chip-row">', unsafe_allow_html=True)
-c1, c2, _ = st.columns([1, 1, 10])
-with c1: st.button("{prenom}", key="ep_p", on_click=lambda: st.session_state.update(ep_inject="{prenom}"))
-with c2: st.button("{nom}",    key="ep_n", on_click=lambda: st.session_state.update(ep_inject="{nom}"))
+st.markdown('<div style="display:flex;gap:8px;margin-bottom:8px">', unsafe_allow_html=True)
+st.button("{prenom}", key="ep_p", on_click=lambda: st.session_state.update(ep_inject="{prenom}"), use_container_width=False)
+st.button("{nom}", key="ep_n", on_click=lambda: st.session_state.update(ep_inject="{nom}"), use_container_width=False)
 st.markdown('</div>', unsafe_allow_html=True)
 
 email_pattern = st.text_input("Format", key="ep", placeholder="{prenom}.{nom}@natixis.com", label_visibility="collapsed")
@@ -303,10 +273,9 @@ if st.session_state.mb_inject:
     st.session_state.mb += st.session_state.mb_inject
     st.session_state.mb_inject = ""
 
-st.markdown('<div class="chip-row">', unsafe_allow_html=True)
-c1, c2, _ = st.columns([1, 1, 10])
-with c1: st.button("{prenom}", key="mb_p", on_click=lambda: st.session_state.update(mb_inject="{prenom}"))
-with c2: st.button("{nom}",    key="mb_n", on_click=lambda: st.session_state.update(mb_inject="{nom}"))
+st.markdown('<div style="display:flex;gap:8px;margin-bottom:8px">', unsafe_allow_html=True)
+st.button("{prenom}", key="mb_p", on_click=lambda: st.session_state.update(mb_inject="{prenom}"), use_container_width=False)
+st.button("{nom}", key="mb_n", on_click=lambda: st.session_state.update(mb_inject="{nom}"), use_container_width=False)
 st.markdown('</div>', unsafe_allow_html=True)
 
 mail_body = st.text_area("Corps", key="mb", placeholder="Bonjour {prenom} {nom},\n\nJe me permets de vous contacter...\n\nCordialement,", height=200, label_visibility="collapsed")

@@ -259,15 +259,11 @@ mail_subject = st.text_input("Objet", key="ms", placeholder="ex: Candidature —
 
 st.markdown('<p style="font-family:DM Mono,monospace;font-size:0.7rem;color:#6b6b88;letter-spacing:0.08em;text-transform:uppercase;margin:12px 0 6px">Corps</p>', unsafe_allow_html=True)
 
-col_p, col_n, col_rest = st.columns([1, 1, 10])
-with col_p:
-    st.markdown('<div class="chip-btn">', unsafe_allow_html=True)
-    st.button("{prenom}", key="mb_p", on_click=lambda: st.session_state.update(mb=st.session_state.mb+"{prenom}"))
-    st.markdown('</div>', unsafe_allow_html=True)
-with col_n:
-    st.markdown('<div class="chip-btn">', unsafe_allow_html=True)
-    st.button("{nom}", key="mb_n", on_click=lambda: st.session_state.update(mb=st.session_state.mb+"{nom}"))
-    st.markdown('</div>', unsafe_allow_html=True)
+var_click = st.pills("", ["{prenom}", "{nom}"], key="var_pill", label_visibility="collapsed")
+if var_click:
+    st.session_state.mb = st.session_state.mb + var_click
+    st.session_state.var_pill = None
+
 mail_body = st.text_area("Corps", key="mb", placeholder="Bonjour {prenom} {nom},\n\nJe me permets de vous contacter...\n\nCordialement,", height=200, label_visibility="collapsed")
 
 st.markdown('</div>', unsafe_allow_html=True)

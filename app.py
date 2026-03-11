@@ -135,6 +135,14 @@ label { color: #6b6b88 !important; font-family: 'DM Mono', monospace !important;
 .stFileUploader { background: #1a1a26 !important; border: 2px dashed #2a2a3d !important; border-radius: 12px !important; }
 .stProgress > div > div { background: linear-gradient(90deg, #6c63ff, #ff6584) !important; }
 div[data-testid="stExpander"] { background: #12121a !important; border: 1px solid #2a2a3d !important; border-radius: 12px !important; }
+
+/* Hide Streamlit default header bar */
+header[data-testid="stHeader"] { display: none !important; }
+.stAppHeader { display: none !important; }
+[data-testid="stDecoration"] { display: none !important; }
+
+/* Remove extra padding at top */
+.main .block-container { padding-top: 2rem !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -147,6 +155,15 @@ st.markdown("""
     <p>// automatisation de campagnes email personnalisées</p>
   </div>
 </div>
+""", unsafe_allow_html=True)
+
+# Hide default empty top bar via CSS
+st.markdown("""
+<style>
+  #root > div:first-child { padding-top: 0 !important; }
+  .stAppHeader { display: none !important; }
+  header[data-testid="stHeader"] { display: none !important; }
+</style>
 """, unsafe_allow_html=True)
 
 
@@ -285,12 +302,15 @@ st.markdown('</div>', unsafe_allow_html=True)
 st.markdown('<div class="step-card">', unsafe_allow_html=True)
 st.markdown('<div class="step-label">Étape 02</div><div class="step-title">📧 Structure de l\'adresse email</div>', unsafe_allow_html=True)
 
-email_pattern = st.text_input("Format de l'adresse", placeholder="{prenom}.{nom}@natixis.com", help="Utilise {prenom} et {nom} comme variables")
+st.markdown('<div class="hint-box">Variables : <code>{prenom}</code> &nbsp; <code>{nom}</code> — copie-les dans le champ ci-dessous</div>', unsafe_allow_html=True)
+st.write("")
+
+email_pattern = st.text_input("Format de l'adresse", placeholder="{prenom}.{nom}@natixis.com")
 
 if email_pattern and st.session_state.contacts and st.session_state.prenom_col:
     sample = st.session_state.contacts[0]
     example = resolve_email(sample, email_pattern, st.session_state.prenom_col, st.session_state.nom_col)
-    st.markdown(f'<div class="hint-box">→ Exemple : <code>{example}</code></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="hint-box">→ Exemple généré : <code>{example}</code></div>', unsafe_allow_html=True)
 
 st.markdown('</div>', unsafe_allow_html=True)
 
@@ -301,7 +321,7 @@ st.markdown('</div>', unsafe_allow_html=True)
 st.markdown('<div class="step-card">', unsafe_allow_html=True)
 st.markdown('<div class="step-label">Étape 03</div><div class="step-title">✍️ Contenu du mail</div>', unsafe_allow_html=True)
 
-st.markdown('<div class="hint-box">Variables disponibles : <code>{prenom}</code> &nbsp; <code>{nom}</code></div>', unsafe_allow_html=True)
+st.markdown('<div class="hint-box">💡 Utilise <code>{prenom}</code> et <code>{nom}</code> dans ton texte — ils seront remplacés automatiquement pour chaque contact</div>', unsafe_allow_html=True)
 st.write("")
 
 mail_subject = st.text_input("Objet du mail", placeholder="ex: Candidature — Développeur Full Stack")
@@ -362,12 +382,13 @@ st.markdown('</div>', unsafe_allow_html=True)
 st.markdown('<div class="step-card highlighted">', unsafe_allow_html=True)
 st.markdown('<div class="step-label">Étape 06</div><div class="step-title">📬 Connexion Gmail (OAuth)</div>', unsafe_allow_html=True)
 
+REDIRECT_URI = "https://mailforge.streamlit.app"
+
 st.markdown("""
 <div class="hint-box">
-  Renseigne tes credentials Google Cloud. Ils ne sont <strong style="color:#e8e8f0">jamais stockés</strong> — utilisés uniquement pour cette session.<br><br>
+  Renseigne tes credentials Google Cloud. Ils ne sont <strong style="color:#e8e8f0">jamais stockés</strong> — uniquement utilisés pour cette session.<br><br>
   Tu n'as pas encore de credentials ? → <a href="https://console.cloud.google.com/apis/credentials" target="_blank">Google Cloud Console</a><br>
-  <code>APIs & Services</code> → <code>Identifiants</code> → <code>Créer un ID client OAuth</code> → <code>Application Web</code><br>
-  URI de redirection : <code>urn:ietf:wg:oauth:2.0:oob</code>
+  URI de redirection à configurer : <code>https://mailforge.streamlit.app</code>
 </div>
 """, unsafe_allow_html=True)
 st.write("")
@@ -381,9 +402,23 @@ with col2:
 if client_id: st.session_state.client_id = client_id
 if client_secret: st.session_state.client_secret = client_secret
 
-# Auth flow
+# Check if Google redirected back with a code in the URL
+query_params = st.query_params
+oauth_code = query_params.get("code", None)
+
+# Auto-exchange code if present in URL and not yet connected
+if oauth_code and not st.session_state.access_token and st.session_state.client_id and st.session_state.client_secret:
+    try:
+        tokens = exchange_code(st.session_state.client_id, st.session_state.client_secret, oauth_code, REDIRECT_URI)
+        st.session_state.access_token  = tokens["access_token"]
+        st.session_state.refresh_token = tokens.get("refresh_token")
+        st.session_state.gmail_email   = get_user_email(tokens["access_token"])
+        st.query_params.clear()
+        st.rerun()
+    except Exception as e:
+        st.error(f"Erreur d'authentification automatique : {e}")
+
 if client_id and client_secret:
-    REDIRECT_URI = "urn:ietf:wg:oauth:2.0:oob"
     params = {
         "client_id":     client_id,
         "redirect_uri":  REDIRECT_URI,
@@ -397,31 +432,18 @@ if client_id and client_secret:
     if not st.session_state.access_token:
         st.markdown(f"""
         <div class="hint-box" style="margin-top:12px">
-          <strong style="color:#e8e8f0">1.</strong> Clique sur ce lien pour autoriser l'accès Gmail :<br>
-          <a href="{auth_url}" target="_blank">🔗 Ouvrir la page d'autorisation Google</a><br><br>
-          <strong style="color:#e8e8f0">2.</strong> Connecte-toi, accepte, puis <strong style="color:#e8e8f0">copie le code</strong> affiché par Google<br>
-          <strong style="color:#e8e8f0">3.</strong> Colle-le ci-dessous
+          <strong style="color:#e8e8f0">1.</strong> Clique sur ce bouton pour autoriser l'accès Gmail :<br><br>
+          <a href="{auth_url}" target="_self" style="background:linear-gradient(135deg,#6c63ff,#9b59f5);color:white;padding:10px 20px;border-radius:8px;text-decoration:none;font-weight:700;font-family:Syne,sans-serif">🔗 Se connecter à Gmail</a><br><br>
+          <strong style="color:#e8e8f0">2.</strong> Connecte-toi avec ton compte Google<br>
+          <strong style="color:#e8e8f0">3.</strong> Tu seras redirigé automatiquement ici ✓
         </div>
         """, unsafe_allow_html=True)
-        st.write("")
-
-        auth_code = st.text_input("Code d'autorisation Google", placeholder="4/0AX4XfWh...")
-        if st.button("✅ Valider le code") and auth_code:
-            try:
-                tokens = exchange_code(client_id, client_secret, auth_code.strip(), REDIRECT_URI)
-                st.session_state.access_token  = tokens["access_token"]
-                st.session_state.refresh_token = tokens.get("refresh_token")
-                st.session_state.gmail_email   = get_user_email(tokens["access_token"])
-                st.success(f"✓ Connecté : {st.session_state.gmail_email}")
-                st.rerun()
-            except Exception as e:
-                st.error(f"Erreur d'authentification : {e}")
     else:
         st.markdown(f'<div class="badge-success" style="margin-top:8px">✓ Connecté : {st.session_state.gmail_email}</div>', unsafe_allow_html=True)
         if st.button("🔓 Se déconnecter"):
-            st.session_state.access_token = None
+            st.session_state.access_token  = None
             st.session_state.refresh_token = None
-            st.session_state.gmail_email = None
+            st.session_state.gmail_email   = None
             st.rerun()
 
 st.markdown('</div>', unsafe_allow_html=True)

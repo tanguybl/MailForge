@@ -119,28 +119,10 @@ div[data-testid="stVerticalBlock"] > div > div > .stButton>button:hover {
 }
 .stButton>button:disabled { opacity:0.35 !important; transform:none !important; }
 
-/* Small chip buttons for variables */
-.chip-btn .stButton>button {
-  background: rgba(196,113,237,0.12) !important;
-  color: #c471ed !important;
-  border: 1px solid rgba(196,113,237,0.35) !important;
-  border-radius: 6px !important;
-  font-family: 'DM Mono', monospace !important;
-  font-weight: 400 !important;
-  font-size: 0.72rem !important;
-  padding: 2px 10px !important;
-  box-shadow: none !important;
-  line-height: 1.4 !important;
-  min-height: 0 !important;
-  height: auto !important;
-  width: auto !important;
-}
-.chip-btn .stButton>button:hover {
-  background: rgba(196,113,237,0.25) !important;
-  border-color: #c471ed !important;
-  transform: none !important;
-  box-shadow: none !important;
-}
+/* Variable chip buttons - targeted by aria-label */
+button[kind="secondary"][data-testid="baseButton-secondary"] { }
+.stButton button p { font-size: inherit !important; }
+
 .stFileUploader { background:#0e0e18 !important; border:2px dashed #1e1e2e !important; border-radius:12px !important; }
 .stProgress>div>div { background:linear-gradient(90deg,#c471ed,#4776e6) !important; }
 [data-testid="stDataFrame"] { border-radius:10px; overflow:hidden; }
@@ -259,12 +241,16 @@ mail_subject = st.text_input("Objet", key="ms", placeholder="ex: Candidature —
 
 st.markdown('<p style="font-family:DM Mono,monospace;font-size:0.7rem;color:#6b6b88;letter-spacing:0.08em;text-transform:uppercase;margin:12px 0 4px">Corps</p>', unsafe_allow_html=True)
 
-# Injection via selectbox — valeur None = rien, sinon on ajoute au texte
-_var = st.selectbox("var", ["", "{prenom}", "{nom}"], key="_var_sel", label_visibility="collapsed")
-if _var:
-    st.session_state.mb = st.session_state.get("mb", "") + _var
-    st.session_state["_var_sel"] = ""
-    st.rerun()
+if "mb" not in st.session_state: st.session_state.mb = ""
+if "mb_inject" not in st.session_state: st.session_state.mb_inject = ""
+
+if st.session_state.mb_inject:
+    st.session_state.mb = st.session_state.mb + st.session_state.mb_inject
+    st.session_state.mb_inject = ""
+
+c1, c2, _ = st.columns([1, 1, 10])
+with c1: st.button("{prenom}", key="mb_p", on_click=lambda: st.session_state.update(mb_inject="{prenom}"))
+with c2: st.button("{nom}",    key="mb_n", on_click=lambda: st.session_state.update(mb_inject="{nom}"))
 
 mail_body = st.text_area("Corps", key="mb", placeholder="Bonjour {prenom} {nom},\n\nJe me permets de vous contacter...\n\nCordialement,", height=200, label_visibility="collapsed")
 

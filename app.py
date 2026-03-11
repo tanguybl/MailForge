@@ -268,7 +268,7 @@ if st.session_state.ep_inject:
     st.session_state.ep_inject = ""
 
 st.markdown('<div class="var-chips">', unsafe_allow_html=True)
-c1, c2, _ = st.columns([1,1,8])
+c1, c2, _ = st.columns([2,2,6])
 with c1: st.button("{prenom}", key="ep_p", on_click=lambda: st.session_state.update(ep_inject="{prenom}"))
 with c2: st.button("{nom}",    key="ep_n", on_click=lambda: st.session_state.update(ep_inject="{nom}"))
 st.markdown('</div>', unsafe_allow_html=True)
@@ -298,7 +298,7 @@ if st.session_state.mb_inject:
     st.session_state.mb_inject = ""
 
 st.markdown('<div class="var-chips">', unsafe_allow_html=True)
-c1, c2, _ = st.columns([1,1,8])
+c1, c2, _ = st.columns([2,2,6])
 with c1: st.button("{prenom}", key="mb_p", on_click=lambda: st.session_state.update(mb_inject="{prenom}"))
 with c2: st.button("{nom}",    key="mb_n", on_click=lambda: st.session_state.update(mb_inject="{nom}"))
 st.markdown('</div>', unsafe_allow_html=True)

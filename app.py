@@ -224,9 +224,11 @@ def build_msg(frm, to, subj, body, atts):
     return msg
 
 def test_conn(addr, pwd):
+    pwd = ''.join(c for c in pwd if ord(c) < 128).replace(" ", "")
     with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=8) as s: s.login(addr, pwd)
 
 def save_draft(addr, pwd, msg):
+    pwd = ''.join(c for c in pwd if ord(c) < 128).replace(" ", "")
     with imaplib.IMAP4_SSL("imap.gmail.com") as M:
         M.login(addr, pwd)
         for f in ['[Gmail]/Drafts','[Gmail]/Brouillons','Drafts','Brouillons']:
@@ -375,7 +377,7 @@ if pwd_in:   st.session_state.pwd   = pwd_in
 if st.session_state.gmail and st.session_state.pwd and not st.session_state.connected:
     if st.button("🔌 Tester la connexion"):
         try:
-            test_conn(st.session_state.gmail, st.session_state.pwd.replace(" ",""))
+            test_conn(st.session_state.gmail, (''.join(c for c in st.session_state.pwd if ord(c) < 128).replace(" ", "")))
             st.session_state.connected = True
             st.rerun()
         except Exception as e:
@@ -403,7 +405,7 @@ n = len(st.session_state.contacts)
 if st.button(f"✉ Créer {n} brouillon{'s' if n>1 else ''} dans Gmail", disabled=not ready):
     prog = st.progress(0); status = st.empty(); logs = st.empty()
     lines = []; ok = 0; err = 0
-    pwd = st.session_state.pwd.replace(" ","")
+    pwd = (''.join(c for c in st.session_state.pwd if ord(c) < 128).replace(" ", ""))
     for i, c in enumerate(st.session_state.contacts):
         to   = resolve_addr(c, email_pattern, st.session_state.prenom_col, st.session_state.nom_col)
         subj = resolve_txt(c, mail_subject, st.session_state.prenom_col, st.session_state.nom_col)

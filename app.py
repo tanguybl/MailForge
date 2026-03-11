@@ -374,19 +374,8 @@ with c2: pwd_in   = st.text_input("Mot de passe d'app", placeholder="xxxx xxxx x
 if gmail_in: st.session_state.gmail = gmail_in
 if pwd_in:   st.session_state.pwd   = pwd_in
 
-if st.session_state.gmail and st.session_state.pwd and not st.session_state.connected:
-    if st.button("🔌 Tester la connexion"):
-        try:
-            test_conn(st.session_state.gmail, (''.join(c for c in st.session_state.pwd if ord(c) < 128).replace(" ", "")))
-            st.session_state.connected = True
-            st.rerun()
-        except Exception as e:
-            st.error(f"Connexion échouée : {e}")
-
-if st.session_state.connected:
-    st.markdown(f'<div class="badge-ok" style="margin-top:10px">✓ Connecté : {st.session_state.gmail}</div>', unsafe_allow_html=True)
-    if st.button("🔓 Déconnecter"):
-        st.session_state.connected = False; st.session_state.pwd = ""; st.rerun()
+if st.session_state.gmail and st.session_state.pwd:
+    st.markdown(f'<div class="badge-ok" style="margin-top:10px">✓ {st.session_state.gmail}</div>', unsafe_allow_html=True)
 
 st.markdown('</div>', unsafe_allow_html=True)
 
@@ -396,16 +385,16 @@ st.markdown('</div>', unsafe_allow_html=True)
 # ════════════════════════════════════════════════
 st.markdown('<div class="card"><div class="card-label">Étape 07</div><div class="card-title">🚀 Créer les brouillons</div>', unsafe_allow_html=True)
 
-ready = st.session_state.contacts and email_pattern and mail_body and st.session_state.connected
+ready = st.session_state.contacts and email_pattern and mail_body and st.session_state.gmail and st.session_state.pwd
 if not ready:
-    missing = [x for x, ok in [("CSV", st.session_state.contacts), ("Pattern email", email_pattern), ("Corps du mail", mail_body), ("Connexion Gmail", st.session_state.connected)] if not ok]
+    missing = [x for x, ok in [("CSV", st.session_state.contacts), ("Pattern email", email_pattern), ("Corps du mail", mail_body), ("Connexion Gmail", st.session_state.gmail and st.session_state.pwd)] if not ok]
     st.markdown(f'<div class="badge-warn">⚠ En attente : {" · ".join(missing)}</div>', unsafe_allow_html=True)
 
 n = len(st.session_state.contacts)
 if st.button(f"✉ Créer {n} brouillon{'s' if n>1 else ''} dans Gmail", disabled=not ready):
     prog = st.progress(0); status = st.empty(); logs = st.empty()
     lines = []; ok = 0; err = 0
-    pwd = (''.join(c for c in st.session_state.pwd if ord(c) < 128).replace(" ", ""))
+    pwd = ''.join(c for c in st.session_state.pwd if ord(c) < 128).replace(" ", "")
     for i, c in enumerate(st.session_state.contacts):
         to   = resolve_addr(c, email_pattern, st.session_state.prenom_col, st.session_state.nom_col)
         subj = resolve_txt(c, mail_subject, st.session_state.prenom_col, st.session_state.nom_col)

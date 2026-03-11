@@ -119,9 +119,25 @@ div[data-testid="stVerticalBlock"] > div > div > .stButton>button:hover {
 }
 .stButton>button:disabled { opacity:0.35 !important; transform:none !important; }
 
-/* Chip variable buttons - small, styled as pills */
-div[data-testid="stButton"]:has(button[kind="secondaryFormSubmit"]) button,
-button[data-testid="baseButton-secondary"] {
+/* Chip buttons — side by side, violet */
+div[data-testid="stVerticalBlock"] > div > div[data-testid="stButton"] {
+  display: inline-block !important;
+  width: auto !important;
+  margin-right: 8px !important;
+}
+div[data-testid="stButton"]:has(button#ep_p),
+div[data-testid="stButton"]:has(button#ep_n),
+div[data-testid="stButton"]:has(button#mb_p),
+div[data-testid="stButton"]:has(button#mb_n) {
+  display: inline-block !important;
+  width: auto !important;
+  margin-right: 8px !important;
+}
+button[kind="secondary"],
+div[data-testid="stButton"]:has(button#ep_p) button,
+div[data-testid="stButton"]:has(button#ep_n) button,
+div[data-testid="stButton"]:has(button#mb_p) button,
+div[data-testid="stButton"]:has(button#mb_n) button {
   background: rgba(196,113,237,0.15) !important;
   color: #c471ed !important;
   border: 1px solid rgba(196,113,237,0.4) !important;
@@ -134,6 +150,16 @@ button[data-testid="baseButton-secondary"] {
   border-radius: 20px !important;
   box-shadow: none !important;
   white-space: nowrap !important;
+  width: auto !important;
+  min-width: 0 !important;
+}
+div[data-testid="stButton"]:has(button#ep_p) button:hover,
+div[data-testid="stButton"]:has(button#ep_n) button:hover,
+div[data-testid="stButton"]:has(button#mb_p) button:hover,
+div[data-testid="stButton"]:has(button#mb_n) button:hover {
+  background: rgba(196,113,237,0.3) !important;
+  transform: none !important;
+  box-shadow: none !important;
 }
 .stFileUploader { background:#0e0e18 !important; border:2px dashed #1e1e2e !important; border-radius:12px !important; }
 .stProgress>div>div { background:linear-gradient(90deg,#c471ed,#4776e6) !important; }

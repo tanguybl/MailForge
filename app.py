@@ -459,7 +459,7 @@ if oauth_code and not st.session_state.access_token and st.session_state.client_
 
 if st.session_state.client_id and st.session_state.client_secret and not st.session_state.access_token:
     params = {"client_id": st.session_state.client_id, "redirect_uri": REDIRECT_URI,
-              "response_type": "code", "scope": "https://mail.google.com/",
+              "response_type": "code", "scope": "https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/userinfo.email",
               "access_type": "offline", "prompt": "consent"}
     auth_url = "https://accounts.google.com/o/oauth2/v2/auth?" + urllib.parse.urlencode(params)
     st.markdown(f'<a href="{auth_url}" target="_self" style="display:inline-block;margin-top:12px;background:linear-gradient(135deg,#c471ed,#4776e6);color:white;padding:8px 20px;border-radius:10px;text-decoration:none;font-family:Syne,sans-serif;font-weight:700;font-size:0.9rem">🔗 Se connecter à Gmail</a>', unsafe_allow_html=True)

@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import unicodedata
 import smtplib
+import imaplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.base import MIMEBase
@@ -225,10 +226,14 @@ def build_msg(frm, to, subj, body, atts):
 def clean_pwd(pwd):
     return ''.join(c for c in pwd if ord(c) < 128).replace(" ", "")
 
-def send_email(gmail, pwd, msg):
-    with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=10) as s:
-        s.login(gmail, clean_pwd(pwd))
-        s.sendmail(gmail, msg["To"], msg.as_bytes())
+def save_draft(addr, pwd, msg):
+    with imaplib.IMAP4_SSL("imap.gmail.com") as M:
+        M.login(addr, clean_pwd(pwd))
+        for f in ['[Gmail]/Drafts','[Gmail]/Brouillons','Drafts','Brouillons']:
+            try:
+                if M.append(f, '\\Draft', None, msg.as_bytes())[0] == 'OK': return
+            except: continue
+        raise Exception("Dossier Brouillons introuvable")
 
 
 # ════════════════════════════════════════════════
@@ -375,7 +380,7 @@ st.markdown('</div>', unsafe_allow_html=True)
 # ════════════════════════════════════════════════
 # 07 — Envoi
 # ════════════════════════════════════════════════
-st.markdown('<div class="card"><div class="card-label">Étape 07</div><div class="card-title">🚀 Envoyer les emails</div>', unsafe_allow_html=True)
+st.markdown('<div class="card"><div class="card-label">Étape 07</div><div class="card-title">🚀 Créer les brouillons</div>', unsafe_allow_html=True)
 
 ready = st.session_state.contacts and email_pattern and mail_body and st.session_state.gmail and st.session_state.pwd
 if not ready:
@@ -383,7 +388,7 @@ if not ready:
     st.markdown(f'<div class="badge-warn">⚠ En attente : {" · ".join(missing)}</div>', unsafe_allow_html=True)
 
 n = len(st.session_state.contacts)
-if st.button(f"✉ Envoyer {n} email{'s' if n>1 else ''}", disabled=not ready):
+if st.button(f"✉ Créer {n} brouillon{'s' if n>1 else ''} dans Gmail", disabled=not ready):
     prog = st.progress(0); status = st.empty(); logs = st.empty()
     lines = []; ok = 0; err = 0
     for i, c in enumerate(st.session_state.contacts):
@@ -391,7 +396,7 @@ if st.button(f"✉ Envoyer {n} email{'s' if n>1 else ''}", disabled=not ready):
         subj = resolve_txt(c, mail_subject, st.session_state.prenom_col, st.session_state.nom_col)
         body = resolve_txt(c, mail_body,    st.session_state.prenom_col, st.session_state.nom_col)
         try:
-            send_email(st.session_state.gmail, st.session_state.pwd, build_msg(st.session_state.gmail, to, subj, body, st.session_state.pdfs))
+            save_draft(st.session_state.gmail, st.session_state.pwd, build_msg(st.session_state.gmail, to, subj, body, st.session_state.pdfs))
             ok += 1; lines.append(f'<div class="log-ok">✓ {to}</div>')
         except Exception as e:
             err += 1; lines.append(f'<div class="log-err">✗ {to} — {e}</div>')
@@ -399,8 +404,8 @@ if st.button(f"✉ Envoyer {n} email{'s' if n>1 else ''}", disabled=not ready):
         status.markdown(f'<div class="log-info">{i+1}/{n}</div>', unsafe_allow_html=True)
         logs.markdown('\n'.join(lines[-8:]), unsafe_allow_html=True)
     status.empty()
-    if err == 0: st.success(f"✅ {ok} emails envoyés !")
-    else: st.warning(f"✅ {ok} envoyés · ⚠️ {err} erreur(s)")
+    if err == 0: st.success(f"✅ {ok} brouillons créés dans Gmail !")
+    else: st.warning(f"✅ {ok} créés · ⚠️ {err} erreur(s)")
     logs.markdown('\n'.join(lines), unsafe_allow_html=True)
 
 st.markdown('</div>', unsafe_allow_html=True)

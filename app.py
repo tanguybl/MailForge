@@ -1,8 +1,8 @@
 import streamlit as st
 import pandas as pd
 import unicodedata
-import smtplib
-import imaplib
+import json, base64, urllib.request, urllib.parse
+from datetime import datetime, timedelta
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.base import MIMEBase
@@ -200,8 +200,10 @@ st.markdown("""
 
 # ── Session state ──
 for k, v in {"contacts":[], "prenom_col":None, "nom_col":None, "pdfs":[],
-             "gmail":"", "pwd":"", "connected":False}.items():
+             "client_id":"", "client_secret":"", "access_token":None, "refresh_token":None, "gmail_email":None}.items():
     if k not in st.session_state: st.session_state[k] = v
+
+REDIRECT_URI = "https://mailforge.streamlit.app"
 
 # ── Helpers ──
 def norm(s):
@@ -214,28 +216,98 @@ def resolve_addr(c, pat, pc, nc):
 def resolve_txt(c, txt, pc, nc):
     return txt.replace('{prenom}', c.get(pc,'')).replace('{nom}', c.get(nc,''))
 
-def build_msg(frm, to, subj, body, atts):
+def build_raw(frm, to, subj, body, atts, send_at=None):
     msg = MIMEMultipart()
     msg["From"] = frm; msg["To"] = to; msg["Subject"] = subj
+    if send_at:
+        msg["X-GM-SCHEDTIME"] = str(int(send_at.timestamp()))
     msg.attach(MIMEText(body,"plain","utf-8"))
     for a in atts:
         p = MIMEBase("application","pdf"); p.set_payload(a["data"]); encoders.encode_base64(p)
         p.add_header("Content-Disposition", f'attachment; filename="{a["name"]}"'); msg.attach(p)
-    return msg
+    return base64.urlsafe_b64encode(msg.as_bytes()).decode()
 
-def test_conn(addr, pwd):
-    pwd = ''.join(c for c in pwd if ord(c) < 128).replace(" ", "")
-    with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=8) as s: s.login(addr, pwd)
+def api(token, method, url, data=None):
+    req = urllib.request.Request(url, data=json.dumps(data).encode() if data else None,
+        headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"}, method=method)
+    with urllib.request.urlopen(req) as r: return json.loads(r.read())
 
-def save_draft(addr, pwd, msg):
-    pwd = ''.join(c for c in pwd if ord(c) < 128).replace(" ", "")
-    with imaplib.IMAP4_SSL("imap.gmail.com") as M:
-        M.login(addr, pwd)
-        for f in ['[Gmail]/Drafts','[Gmail]/Brouillons','Drafts','Brouillons']:
-            try:
-                if M.append(f, '\\Draft', None, msg.as_bytes())[0] == 'OK': return
-            except: continue
-        raise Exception("Dossier Brouillons introuvable")
+def schedule_send(token, raw, send_at):
+    ts = int(send_at.timestamp()) * 1000  # milliseconds
+    body = {"message": {"raw": raw}, "sendAt": {"seconds": int(send_at.timestamp())}}
+    # Use Gmail send with scheduleSend
+    return api(token, "POST", "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
+               {"raw": raw, "scheduledTime": {"seconds": int(send_at.timestamp())}})
+
+def schedule_gmail(token, raw, send_at):
+    ts_ms = int(send_at.timestamp()) * 1000
+    return api(token, "POST",
+        f"https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
+        {"raw": raw, "internalDate": str(ts_ms)})
+
+def gmail_schedule(token, raw, send_at):
+    """Create a scheduled send via Gmail API"""
+    body = {"message": {"raw": raw}, "sendAt": send_at.strftime("%Y-%m-%dT%H:%M:%SZ")}
+    req = urllib.request.Request(
+        "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
+        data=json.dumps({"raw": raw}).encode(),
+        headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+        method="POST"
+    )
+    # Actually use the correct scheduled send endpoint
+    body_data = json.dumps({
+        "message": {"raw": raw},
+        "sendAt": send_at.strftime("%Y-%m-%dT%H:%M:%S.000Z")
+    }).encode()
+    req2 = urllib.request.Request(
+        "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
+        data=body_data,
+        headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+        method="POST"
+    )
+    with urllib.request.urlopen(req2) as r: return json.loads(r.read())
+
+def create_scheduled(token, raw, send_at):
+    """Schedule a send using Gmail API scheduleSend"""
+    data = json.dumps({
+        "message": {"raw": raw},
+        "sendAt": send_at.strftime("%Y-%m-%dT09:00:00.000Z")
+    }).encode()
+    req = urllib.request.Request(
+        "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
+        data=data,
+        headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+        method="POST"
+    )
+    with urllib.request.urlopen(req) as r: return json.loads(r.read())
+
+def exchange_code(code):
+    data = urllib.parse.urlencode({
+        "code": code, "client_id": st.session_state.client_id,
+        "client_secret": st.session_state.client_secret,
+        "redirect_uri": REDIRECT_URI, "grant_type": "authorization_code"
+    }).encode()
+    req = urllib.request.Request("https://oauth2.googleapis.com/token", data=data, method="POST")
+    with urllib.request.urlopen(req) as r: return json.loads(r.read())
+
+def get_email(token):
+    req = urllib.request.Request("https://www.googleapis.com/gmail/v1/users/me/profile",
+        headers={"Authorization": f"Bearer {token}"})
+    with urllib.request.urlopen(req) as r: return json.loads(r.read())["emailAddress"]
+
+def send_scheduled(token, frm, to, subj, body, atts, send_at):
+    """Send a scheduled email via Gmail API"""
+    raw = build_raw(frm, to, subj, body, atts)
+    # Format: YYYY-MM-DDTHH:MM:SS.000Z
+    scheduled_str = send_at.strftime("%Y-%m-%dT09:00:00.000Z")
+    data = json.dumps({"message": {"raw": raw}, "sendAt": scheduled_str}).encode()
+    req = urllib.request.Request(
+        "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
+        data=data,
+        headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+        method="POST"
+    )
+    with urllib.request.urlopen(req) as r: return json.loads(r.read())
 
 
 # ════════════════════════════════════════════════
@@ -355,61 +427,102 @@ st.markdown('</div>', unsafe_allow_html=True)
 
 
 # ════════════════════════════════════════════════
-# 06 — Connexion Gmail
+# 06 — Connexion Gmail OAuth
 # ════════════════════════════════════════════════
 st.markdown('<div class="card card-accent"><div class="card-label">Étape 06</div><div class="card-title">📬 Connexion Gmail</div>', unsafe_allow_html=True)
 
 st.markdown("""
 <div class="hint">
-  Utilise un <strong>mot de passe d'application Gmail</strong> — pas ton vrai mot de passe.<br>
-  <strong>1.</strong> <a href="https://myaccount.google.com/security" target="_blank">myaccount.google.com/security</a> → active la validation en 2 étapes<br>
-  <strong>2.</strong> Cherche <strong>"Mots de passe des applications"</strong> → crée-en un → copie le code à 16 caractères
+  <strong>1.</strong> Va sur <a href="https://console.cloud.google.com/apis/credentials" target="_blank">Google Cloud Console</a> → copie ton Client ID et Client Secret<br>
+  <strong>2.</strong> Assure-toi que <code>https://mailforge.streamlit.app</code> est dans les URI de redirection autorisées
 </div>
 """, unsafe_allow_html=True)
 
 c1, c2 = st.columns(2)
-with c1: gmail_in = st.text_input("Adresse Gmail", placeholder="toi@gmail.com", value=st.session_state.gmail)
-with c2: pwd_in   = st.text_input("Mot de passe d'app", placeholder="xxxx xxxx xxxx xxxx", type="password", value=st.session_state.pwd)
+with c1: cid = st.text_input("Client ID", value=st.session_state.client_id, placeholder="934056...googleusercontent.com", type="password")
+with c2: csec = st.text_input("Client Secret", value=st.session_state.client_secret, placeholder="GOCSPX-...", type="password")
+if cid:  st.session_state.client_id = cid
+if csec: st.session_state.client_secret = csec
 
-if gmail_in: st.session_state.gmail = gmail_in
-if pwd_in:   st.session_state.pwd   = pwd_in
+# Handle OAuth redirect
+oauth_code = st.query_params.get("code")
+if oauth_code and not st.session_state.access_token and st.session_state.client_id and st.session_state.client_secret:
+    try:
+        tokens = exchange_code(oauth_code)
+        st.session_state.access_token  = tokens["access_token"]
+        st.session_state.refresh_token = tokens.get("refresh_token")
+        st.session_state.gmail_email   = get_email(tokens["access_token"])
+        st.query_params.clear()
+        st.rerun()
+    except Exception as e:
+        st.error(f"Erreur auth : {e}")
 
-if st.session_state.gmail and st.session_state.pwd:
-    st.markdown(f'<div class="badge-ok" style="margin-top:10px">✓ {st.session_state.gmail}</div>', unsafe_allow_html=True)
+if st.session_state.client_id and st.session_state.client_secret and not st.session_state.access_token:
+    params = {"client_id": st.session_state.client_id, "redirect_uri": REDIRECT_URI,
+              "response_type": "code", "scope": "https://mail.google.com/",
+              "access_type": "offline", "prompt": "consent"}
+    auth_url = "https://accounts.google.com/o/oauth2/v2/auth?" + urllib.parse.urlencode(params)
+    st.markdown(f'<a href="{auth_url}" target="_self" style="display:inline-block;margin-top:12px;background:linear-gradient(135deg,#c471ed,#4776e6);color:white;padding:8px 20px;border-radius:10px;text-decoration:none;font-family:Syne,sans-serif;font-weight:700;font-size:0.9rem">🔗 Se connecter à Gmail</a>', unsafe_allow_html=True)
+
+if st.session_state.access_token:
+    st.markdown(f'<div class="badge-ok" style="margin-top:10px">✓ Connecté : {st.session_state.gmail_email}</div>', unsafe_allow_html=True)
+    if st.button("🔓 Déconnecter"):
+        st.session_state.access_token = None; st.session_state.refresh_token = None
+        st.session_state.gmail_email = None; st.rerun()
 
 st.markdown('</div>', unsafe_allow_html=True)
 
 
 # ════════════════════════════════════════════════
-# 07 — Envoi
+# 07 — Planification
 # ════════════════════════════════════════════════
-st.markdown('<div class="card"><div class="card-label">Étape 07</div><div class="card-title">🚀 Créer les brouillons</div>', unsafe_allow_html=True)
+st.markdown('<div class="card"><div class="card-label">Étape 07</div><div class="card-title">🗓 Planifier l\'envoi</div>', unsafe_allow_html=True)
 
-ready = st.session_state.contacts and email_pattern and mail_body and st.session_state.gmail and st.session_state.pwd
+ready = st.session_state.contacts and email_pattern and mail_body and st.session_state.access_token
 if not ready:
-    missing = [x for x, ok in [("CSV", st.session_state.contacts), ("Pattern email", email_pattern), ("Corps du mail", mail_body), ("Connexion Gmail", st.session_state.gmail and st.session_state.pwd)] if not ok]
+    missing = [x for x, ok in [("CSV", st.session_state.contacts), ("Pattern email", email_pattern), ("Corps du mail", mail_body), ("Connexion Gmail", st.session_state.access_token)] if not ok]
     st.markdown(f'<div class="badge-warn">⚠ En attente : {" · ".join(missing)}</div>', unsafe_allow_html=True)
 
-n = len(st.session_state.contacts)
-if st.button(f"✉ Créer {n} brouillon{'s' if n>1 else ''} dans Gmail", disabled=not ready):
-    prog = st.progress(0); status = st.empty(); logs = st.empty()
-    lines = []; ok = 0; err = 0
-    pwd = ''.join(c for c in st.session_state.pwd if ord(c) < 128).replace(" ", "")
-    for i, c in enumerate(st.session_state.contacts):
-        to   = resolve_addr(c, email_pattern, st.session_state.prenom_col, st.session_state.nom_col)
-        subj = resolve_txt(c, mail_subject, st.session_state.prenom_col, st.session_state.nom_col)
-        body = resolve_txt(c, mail_body,    st.session_state.prenom_col, st.session_state.nom_col)
-        try:
-            save_draft(st.session_state.gmail, pwd, build_msg(st.session_state.gmail, to, subj, body, st.session_state.pdfs))
-            ok += 1; lines.append(f'<div class="log-ok">✓ {to}</div>')
-        except Exception as e:
-            err += 1; lines.append(f'<div class="log-err">✗ {to} — {e}</div>')
-        prog.progress((i+1)/len(st.session_state.contacts))
-        status.markdown(f'<div class="log-info">{i+1}/{len(st.session_state.contacts)}</div>', unsafe_allow_html=True)
-        logs.markdown('\n'.join(lines[-8:]), unsafe_allow_html=True)
-    status.empty()
-    if err == 0: st.success(f"✅ {ok} brouillons créés dans Gmail !")
-    else: st.warning(f"✅ {ok} créés · ⚠️ {err} erreur(s)")
-    logs.markdown('\n'.join(lines), unsafe_allow_html=True)
+if ready:
+    n_total = len(st.session_state.contacts)
+    per_day = st.selectbox("Emails par jour", [5, 10, 15, 20, 30, 50], index=1)
+    n_days  = -(-n_total // per_day)  # ceil division
+    start   = datetime.utcnow() + timedelta(days=1)
+
+    st.markdown(f"""
+    <div class="hint">
+      <strong style="color:#e8e8f0">{n_total} contacts</strong> → 
+      <strong style="color:#c471ed">{per_day}/jour</strong> → 
+      <strong style="color:#e8e8f0">{n_days} jours</strong> 
+      (du {(start).strftime("%d/%m")} au {(start + timedelta(days=n_days-1)).strftime("%d/%m/%Y")})
+    </div>
+    """, unsafe_allow_html=True)
+
+    if st.button(f"🚀 Planifier {n_total} emails dans Gmail", disabled=not ready):
+        prog = st.progress(0); status = st.empty(); logs = st.empty()
+        lines = []; ok = 0; err = 0
+        token = st.session_state.access_token
+
+        for i, contact in enumerate(st.session_state.contacts):
+            to   = resolve_addr(contact, email_pattern, st.session_state.prenom_col, st.session_state.nom_col)
+            subj = resolve_txt(contact, mail_subject, st.session_state.prenom_col, st.session_state.nom_col)
+            body = resolve_txt(contact, mail_body,    st.session_state.prenom_col, st.session_state.nom_col)
+            day_offset = i // per_day
+            send_at = start + timedelta(days=day_offset)
+
+            try:
+                send_scheduled(token, st.session_state.gmail_email, to, subj, body, st.session_state.pdfs, send_at)
+                ok += 1; lines.append(f'<div class="log-ok">✓ {to} → {send_at.strftime("%d/%m")}</div>')
+            except Exception as e:
+                err += 1; lines.append(f'<div class="log-err">✗ {to} — {e}</div>')
+
+            prog.progress((i+1)/n_total)
+            status.markdown(f'<div class="log-info">{i+1}/{n_total}</div>', unsafe_allow_html=True)
+            logs.markdown('\n'.join(lines[-8:]), unsafe_allow_html=True)
+
+        status.empty()
+        if err == 0: st.success(f"✅ {ok} emails planifiés dans Gmail !")
+        else: st.warning(f"✅ {ok} planifiés · ⚠️ {err} erreur(s)")
+        logs.markdown('\n'.join(lines), unsafe_allow_html=True)
 
 st.markdown('</div>', unsafe_allow_html=True)

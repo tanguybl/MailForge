@@ -259,10 +259,25 @@ def resolve_addr(c, pat, pc, nc):
 def resolve_txt(c, txt, pc, nc):
     return txt.replace('{prenom}', c.get(pc,'')).replace('{nom}', c.get(nc,''))
 
+def body_to_html(text):
+    """Convertit le texte brut en HTML en préservant les paragraphes et sauts de ligne."""
+    import html as html_lib
+    escaped = html_lib.escape(text)
+    paragraphs = re.split(r'\n{2,}', escaped)
+    html_parts = ''.join(
+        f'<p style="margin:0 0 1em 0;line-height:1.5">{p.replace(chr(10), "<br>")}</p>'
+        for p in paragraphs
+    )
+    return f'<div style="font-family:Arial,sans-serif;font-size:14px;color:#000">{html_parts}</div>'
+
 def build_msg(frm, to, subj, body, atts):
-    msg = MIMEMultipart()
+    msg = MIMEMultipart('mixed')
     msg["From"] = frm; msg["To"] = to; msg["Subject"] = subj
-    msg.attach(MIMEText(body,"plain","utf-8"))
+    # alternative : plain + html — Gmail affiche le html, préserve les paragraphes
+    alt = MIMEMultipart('alternative')
+    alt.attach(MIMEText(body, "plain", "utf-8"))
+    alt.attach(MIMEText(body_to_html(body), "html", "utf-8"))
+    msg.attach(alt)
     for a in atts:
         p = MIMEBase("application","pdf"); p.set_payload(a["data"]); encoders.encode_base64(p)
         p.add_header("Content-Disposition", f'attachment; filename="{a["name"]}"'); msg.attach(p)

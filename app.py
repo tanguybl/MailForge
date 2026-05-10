@@ -218,14 +218,19 @@ _TITLES = [
 import re
 
 def strip_titles(s):
-    """Supprime les titres/certifications LinkedIn collés avec -- , | ou espace."""
-    # Séparateurs courants : --, —, |, /
-    # On coupe à partir du premier séparateur suivi d'un titre connu
-    # Exemples : "Fenc--Executive MBA", "Justen--M.Sc.--Ph.D", "Dupont | CFA"
-    parts = re.split(r'--|—|\||/', s)
+    """Supprime les titres/certifications LinkedIn collés avec --, —, |, / ou , """
+    # 1. Couper aux séparateurs forts (-- en premier, avant le simple -)
+    parts = re.split(r'--|—|\||/|,', s)
     clean = parts[0].strip()
-    # Aussi gérer le cas où le titre est collé après une virgule
-    clean = re.split(r',', clean)[0].strip()
+
+    # 2. Couper au simple tiret SEULEMENT si ce qui suit est un titre connu
+    #    ex: "Justen-M.Sc" → coupe, mais "belotti-de-chanville" → garde
+    title_pattern = '|'.join(re.escape(t) for t in sorted(_TITLES, key=len, reverse=True))
+    # Cherche un tiret suivi d'un titre (insensible à la casse, avec point optionnel)
+    match = re.search(r'-(?=(?:' + title_pattern + r')(?:[.-]|$))', clean, re.IGNORECASE)
+    if match:
+        clean = clean[:match.start()].strip()
+
     return clean
 
 def norm_prenom(s):

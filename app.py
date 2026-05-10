@@ -79,6 +79,7 @@ header[data-testid="stHeader"],
 .log-ok  { color:#4ade80; font-family:'DM Mono',monospace; font-size:0.76rem; }
 .log-err { color:#ff6584; font-family:'DM Mono',monospace; font-size:0.76rem; }
 .log-info{ color:#7b5ea7; font-family:'DM Mono',monospace; font-size:0.76rem; }
+.log-warn{ color:#facc15; font-family:'DM Mono',monospace; font-size:0.76rem; }
 
 /* ── Streamlit overrides ── */
 .stTextInput>div>div>input,
@@ -204,12 +205,33 @@ for k, v in {"contacts":[], "prenom_col":None, "nom_col":None, "pdfs":[],
     if k not in st.session_state: st.session_state[k] = v
 
 # ── Helpers ──
-def norm(s):
+
+def norm_prenom(s):
+    """Prénom : espaces → '.' (pas de noms composés habituellement)"""
     s = s.lower().strip()
-    return ''.join(c for c in unicodedata.normalize('NFD',s) if unicodedata.category(c)!='Mn').replace(' ','.')
+    return ''.join(c for c in unicodedata.normalize('NFD', s)
+                   if unicodedata.category(c) != 'Mn').replace(' ', '.')
+
+def norm_nom(s):
+    """Nom de famille : espaces → '-' pour gérer les noms composés"""
+    s = s.lower().strip()
+    return ''.join(c for c in unicodedata.normalize('NFD', s)
+                   if unicodedata.category(c) != 'Mn').replace(' ', '-')
+
+def is_censored(val):
+    """Retourne True si la valeur ressemble à un nom censuré (1 seul caractère utile)"""
+    stripped = val.strip().rstrip('.')
+    return len(stripped) <= 1
 
 def resolve_addr(c, pat, pc, nc):
-    return pat.lower().replace('{prenom}', norm(c.get(pc,''))).replace('{nom}', norm(c.get(nc,'')))
+    prenom = c.get(pc, '').strip()
+    nom    = c.get(nc, '').strip()
+    # Skip si prénom ou nom censuré (ex: "B" ou "B.")
+    if is_censored(prenom) or is_censored(nom):
+        return None
+    return (pat.lower()
+               .replace('{prenom}', norm_prenom(prenom))
+               .replace('{nom}',    norm_nom(nom)))
 
 def resolve_txt(c, txt, pc, nc):
     return txt.replace('{prenom}', c.get(pc,'')).replace('{nom}', c.get(nc,''))
@@ -287,7 +309,10 @@ email_pattern = st.text_input("Format", key="ep", placeholder="{prenom}.{nom}@na
 
 if email_pattern and st.session_state.contacts and st.session_state.prenom_col:
     ex = resolve_addr(st.session_state.contacts[0], email_pattern, st.session_state.prenom_col, st.session_state.nom_col)
-    st.markdown(f'<div class="example-line">→ <span>{ex}</span></div>', unsafe_allow_html=True)
+    if ex:
+        st.markdown(f'<div class="example-line">→ <span>{ex}</span></div>', unsafe_allow_html=True)
+    else:
+        st.markdown('<div class="example-line">→ <span style="color:#facc15">premier contact ignoré (nom censuré)</span></div>', unsafe_allow_html=True)
 
 st.markdown('</div>', unsafe_allow_html=True)
 
@@ -341,13 +366,19 @@ if st.button("Générer la prévisualisation"):
     if not st.session_state.contacts: st.warning("Importe d'abord un CSV.")
     elif not email_pattern: st.warning("Remplis le pattern d'adresse.")
     else:
-        for c in st.session_state.contacts[:5]:
+        shown = 0
+        for c in st.session_state.contacts:
+            if shown >= 5: break
             to   = resolve_addr(c, email_pattern, st.session_state.prenom_col, st.session_state.nom_col)
+            if to is None:
+                continue  # skip contacts avec nom censuré
             subj = resolve_txt(c, mail_subject, st.session_state.prenom_col, st.session_state.nom_col)
             body = resolve_txt(c, mail_body,    st.session_state.prenom_col, st.session_state.nom_col)
             st.markdown(f'<div class="prev-card"><div class="prev-to">À → {to}</div><div class="prev-subj">{subj or "(objet vide)"}</div><div class="prev-body">{body or "(corps vide)"}</div></div>', unsafe_allow_html=True)
-        if len(st.session_state.contacts) > 5:
-            st.markdown(f'<p style="font-family:DM Mono,monospace;font-size:0.74rem;color:#6b6b88;text-align:center;margin-top:4px">+ {len(st.session_state.contacts)-5} autres…</p>', unsafe_allow_html=True)
+            shown += 1
+        remaining = len(st.session_state.contacts) - shown
+        if remaining > 0:
+            st.markdown(f'<p style="font-family:DM Mono,monospace;font-size:0.74rem;color:#6b6b88;text-align:center;margin-top:4px">+ {remaining} autres…</p>', unsafe_allow_html=True)
 
 st.markdown('</div>', unsafe_allow_html=True)
 
@@ -390,22 +421,33 @@ if not ready:
 n = len(st.session_state.contacts)
 if st.button(f"✉ Créer {n} brouillon{'s' if n>1 else ''} dans Gmail", disabled=not ready):
     prog = st.progress(0); status = st.empty(); logs = st.empty()
-    lines = []; ok = 0; err = 0
+    lines = []; ok_count = 0; err = 0; skipped = 0
     for i, c in enumerate(st.session_state.contacts):
-        to   = resolve_addr(c, email_pattern, st.session_state.prenom_col, st.session_state.nom_col)
+        to = resolve_addr(c, email_pattern, st.session_state.prenom_col, st.session_state.nom_col)
+        # Skip contacts avec nom/prénom censuré
+        if to is None:
+            skipped += 1
+            raw = f"{c.get(st.session_state.prenom_col,'?')} {c.get(st.session_state.nom_col,'?')}"
+            lines.append(f'<div class="log-warn">⚠ Ignoré (nom censuré) — {raw}</div>')
+            prog.progress((i+1)/n)
+            logs.markdown('\n'.join(lines[-8:]), unsafe_allow_html=True)
+            continue
         subj = resolve_txt(c, mail_subject, st.session_state.prenom_col, st.session_state.nom_col)
         body = resolve_txt(c, mail_body,    st.session_state.prenom_col, st.session_state.nom_col)
         try:
             save_draft(st.session_state.gmail, st.session_state.pwd, build_msg(st.session_state.gmail, to, subj, body, st.session_state.pdfs))
-            ok += 1; lines.append(f'<div class="log-ok">✓ {to}</div>')
+            ok_count += 1; lines.append(f'<div class="log-ok">✓ {to}</div>')
         except Exception as e:
             err += 1; lines.append(f'<div class="log-err">✗ {to} — {e}</div>')
         prog.progress((i+1)/n)
         status.markdown(f'<div class="log-info">{i+1}/{n}</div>', unsafe_allow_html=True)
         logs.markdown('\n'.join(lines[-8:]), unsafe_allow_html=True)
     status.empty()
-    if err == 0: st.success(f"✅ {ok} brouillons créés dans Gmail !")
-    else: st.warning(f"✅ {ok} créés · ⚠️ {err} erreur(s)")
+    summary = f"✅ {ok_count} brouillons créés"
+    if skipped: summary += f" · ⚠️ {skipped} ignoré(s)"
+    if err:     summary += f" · ❌ {err} erreur(s)"
+    if err == 0: st.success(summary)
+    else: st.warning(summary)
     logs.markdown('\n'.join(lines), unsafe_allow_html=True)
 
 st.markdown('</div>', unsafe_allow_html=True)

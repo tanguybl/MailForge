@@ -206,22 +206,45 @@ for k, v in {"contacts":[], "prenom_col":None, "nom_col":None, "pdfs":[],
 
 # ── Helpers ──
 
+# Titres/certifications LinkedIn à supprimer du nom/prénom
+_TITLES = [
+    'mba', 'executive mba', 'emba', 'ms', 'm.sc', 'msc', 'phd', 'ph.d', 'md', 'm.d',
+    'cfa', 'cpa', 'cfp', 'frm', 'pmp', 'caia', 'acca', 'cma', 'cia', 'mca',
+    'llm', 'll.m', 'jd', 'j.d', 'escp', 'hec', 'edhec', 'essec', 'insead',
+    'eng', 'meng', 'bsc', 'b.sc', 'ba', 'mres', 'dba',
+    'linkedin', 'open to work', 'hiring', 'founder', 'ceo', 'cto', 'coo', 'cfo',
+]
+
+import re
+
+def strip_titles(s):
+    """Supprime les titres/certifications LinkedIn collés avec -- , | ou espace."""
+    # Séparateurs courants : --, —, |, /
+    # On coupe à partir du premier séparateur suivi d'un titre connu
+    # Exemples : "Fenc--Executive MBA", "Justen--M.Sc.--Ph.D", "Dupont | CFA"
+    parts = re.split(r'--|—|\||/', s)
+    clean = parts[0].strip()
+    # Aussi gérer le cas où le titre est collé après une virgule
+    clean = re.split(r',', clean)[0].strip()
+    return clean
+
 def norm_prenom(s):
-    """Prénom : espaces → '.' (pas de noms composés habituellement)"""
-    s = s.lower().strip()
+    """Prénom : supprime titres, espaces → '.'"""
+    s = strip_titles(s).lower().strip()
     return ''.join(c for c in unicodedata.normalize('NFD', s)
                    if unicodedata.category(c) != 'Mn').replace(' ', '.')
 
 def norm_nom(s):
-    """Nom de famille : espaces → '-' pour gérer les noms composés"""
-    s = s.lower().strip()
+    """Nom de famille : supprime titres, espaces → '-' pour noms composés"""
+    s = strip_titles(s).lower().strip()
     return ''.join(c for c in unicodedata.normalize('NFD', s)
                    if unicodedata.category(c) != 'Mn').replace(' ', '-')
 
 def is_censored(val):
     """Retourne True si la valeur ressemble à un nom censuré (1 seul caractère utile)"""
-    stripped = val.strip().rstrip('.')
-    return len(stripped) <= 1
+    # On vérifie après nettoyage des titres
+    cleaned = strip_titles(val).strip().rstrip('.')
+    return len(cleaned) <= 1
 
 def resolve_addr(c, pat, pc, nc):
     prenom = c.get(pc, '').strip()

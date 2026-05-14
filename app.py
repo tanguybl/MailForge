@@ -257,9 +257,11 @@ def resolve_addr(c, pat, pc, nc):
     # Skip si prénom ou nom censuré (ex: "B" ou "B.")
     if is_censored(prenom) or is_censored(nom):
         return None
+    initiale = norm_prenom(prenom)[0] if norm_prenom(prenom) else ''
     return (pat.lower()
                .replace('{prenom}', norm_prenom(prenom))
-               .replace('{nom}',    norm_nom(nom)))
+               .replace('{nom}',    norm_nom(nom))
+               .replace('{p}',      initiale))
 
 def resolve_txt(c, txt, pc, nc):
     return txt.replace('{prenom}', c.get(pc,'')).replace('{nom}', c.get(nc,''))
@@ -343,9 +345,10 @@ if st.session_state.ep_inject:
     st.session_state.ep_inject = ""
 
 st.markdown('<div class="var-chips">', unsafe_allow_html=True)
-c1, c2, _ = st.columns([1.5,1.2,7.3])
+c1, c2, c3, _ = st.columns([1.5,1.2,0.9,5.4])
 with c1: st.button("{prenom}", key="ep_p", on_click=lambda: st.session_state.update(ep_inject="{prenom}"))
 with c2: st.button("{nom}",    key="ep_n", on_click=lambda: st.session_state.update(ep_inject="{nom}"))
+with c3: st.button("{p}",      key="ep_i", on_click=lambda: st.session_state.update(ep_inject="{p}"))
 st.markdown('</div>', unsafe_allow_html=True)
 
 email_pattern = st.text_input("Format", key="ep", placeholder="{prenom}.{nom}@natixis.com", label_visibility="collapsed")
